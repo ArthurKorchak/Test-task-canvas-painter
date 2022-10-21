@@ -1,147 +1,183 @@
-const canvas = document.getElementById('c1');
-const collapseBtn = document.getElementById('b1');
-const ctx = canvas.getContext('2d');
-const COLLAPSE_DELAY = 3000;
-const lines = [];
-const line = {
-  x1: 0,
-  y1: 0,
-  x2: 0,
-  y2: 0
-};
-let isFirstClick = true;
-let points = [];
-
-collapseBtn.disabled = true;
-
-function render() {
-  ctx.clearRect(0, 0, 600, 400);
-  lines.forEach(({ x1, y1, x2, y2 }) => {
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-  });
-  points.forEach(({ x, y }) => {
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2, true);
-    ctx.fillStyle = "red";
-    ctx.fill();
-    ctx.stroke();
-  });
-};
-
-function handler({offsetX, offsetY}) {
-  lines[0].x2 = offsetX;
-  lines[0].y2 = offsetY;
-  searchPoints();
-  render();
-};
-
-canvas.addEventListener('click', ({ offsetX, offsetY }) => {
-  if (isFirstClick) {
-    lines.unshift({ ...line });
-    lines[0].x1 = offsetX;
-    lines[0].y1 = offsetY;
-    isFirstClick = false;
-    canvas.addEventListener('mousemove', handler);
-  } else {
-    canvas.removeEventListener('mousemove', handler);
-    lines[0].x2 = offsetX;
-    lines[0].y2 = offsetY;
-    isFirstClick = true;
-    collapseBtn.disabled = false;
-    render();
-  };
-});
-
-function searchPoints() {
-  points = lines.reduce((acc1, line1, idx1) => {
-    const a = lines.reduce((acc2, line2, idx2) => {
-      if (idx1 > idx2) {
-        const intersection = calculateIntersection(line1, line2);
-        if (intersection) {
-          return [...acc2, intersection];
-        };
-        return acc2;
-      };
-      return acc2;
-    }, []);
-    if (a) {
-      return [...acc1, ...a]
-    };
-    return acc1;
-  }, []);
-};
-
-function calculateIntersection(line1, line2) {
-  const c2x = line2.x1 - line2.x2;
-  const c3x = line1.x1 - line1.x2;
-  const c2y = line2.y1 - line2.y2;
-  const c3y = line1.y1 - line1.y2;
-  const d  = c3x * c2y - c3y * c2x;
-  
-  if (d === 0 ) {
-  	return null;
-  };
-
-  const u1 = line1.x1 * line1.y2 - line1.y1 * line1.x2;
-  const u4 = line2.x1 * line2.y2 - line2.y1 * line2.x2; 
-  const px = Math.round((u1 * c2x - c3x * u4) / d);
-  const py = Math.round((u1 * c2y - c3y * u4) / d);
-
-  if (!(((Math.min(line1.x1, line1.x2) <= px && px <= Math.max(line1.x1, line1.x2)) && (Math.min(line2.x1, line2.x2) <= px && px <= Math.max(line2.x1, line2.x2))) &&
-    ((Math.min(line1.y1, line1.y2) <= py && py <= Math.max(line1.y1, line1.y2)) && (Math.min(line2.y1, line2.y2) <= py && py <= Math.max(line2.y1, line2.y2))))) {
-    return null;
-  };
-  	
-  return { x: px, y: py };
-};
-
-collapseBtn.addEventListener('click', collapseLines);
-
-function collapseLines() {
-  collapseBtn.disabled = true;
-  const cutStep = 25;
-  const numberOfCuts = (COLLAPSE_DELAY / cutStep);
-  const slices = []
-  let counter = 0;
-
-  const cut = setInterval(() => {
-    counter += cutStep;
-
-    lines.forEach(({x1, y1, x2, y2}, idx) => {
-      if (counter === cutStep) {
-        const lineLength = +(Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)).toFixed(2);
-        slices[idx] = (lineLength / numberOfCuts / 2).toFixed(2);
-      };
-
-      const oldLength = (Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)).toFixed(2);
-      const newLength = (oldLength - slices[idx]).toFixed(2);
-      const x = Math.max(x1, x2) - Math.min(x1, x2)
-      const y = Math.max(y1, y2) - Math.min(y1, y2)
-      const tx = (x * newLength) / oldLength
-      const ty = (y * newLength) / oldLength
-      let newX1;
-      x2 > x1 ? newX1 = x1 + (x - tx) : newX1 = x1 - (x - tx)
-      let newY1;
-      y2 > y1 ? newY1 = y1 + (y - ty) : newY1 = y1 - (y - ty)
-      let newX2;
-      x2 > x1 ? newX2 = x2 - (x - tx) : newX2 = x2 + (x - tx)
-      let newY2;
-      y2 > y1 ? newY2 = y2 - (y - ty) : newY2 = y2 + (y - ty)
-      lines[idx] = { x1: newX1, y1: newY1, x2: newX2, y2: newY2 }
-
-      searchPoints();
-      render();
-    })
-
-    if (counter >= COLLAPSE_DELAY) {
-      clearInterval(cut);
-      lines.length = 0;
-      ctx.clearRect(0, 0, 600, 400);
-    };
-    
-  }, cutStep);
-
-};
+"use strict";
+class Point {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+    ;
+    setPoint(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+    ;
+    getPoint() {
+        return { x: this.x, y: this.y };
+    }
+    ;
+}
+;
+class Line {
+    constructor(x, y) {
+        this.a = new Point(0, 0);
+        this.b = new Point(0, 0);
+        this.a.setPoint(x, y);
+    }
+    ;
+    setPointA(x, y) {
+        this.a.setPoint(x, y);
+    }
+    ;
+    setPointB(x, y) {
+        this.b.setPoint(x, y);
+    }
+    ;
+    getCoordinates() {
+        return { a: this.a.getPoint(), b: this.b.getPoint() };
+    }
+    ;
+}
+;
+class graphicEngine {
+    constructor() {
+        this.COLLAPSE_DELAY = 3000;
+        this.points = [];
+        this.lines = [];
+        this.isFirstClick = true;
+        this.canvas = document.getElementById('c1');
+        this.ctx = this.canvas.getContext('2d');
+        this.collapseBtn = document.getElementById('b1');
+    }
+    ;
+    start() {
+        const handlerMouse = this.handlerMouseMove.bind(this);
+        const collapse = this.collapseLines.bind(this);
+        this.collapseBtn.disabled = true;
+        this.collapseBtn.addEventListener('click', collapse);
+        this.canvas.addEventListener('click', ({ offsetX, offsetY }) => {
+            if (this.isFirstClick) {
+                this.lines.unshift(new Line(offsetX, offsetY));
+                this.isFirstClick = false;
+                this.canvas.addEventListener('mousemove', handlerMouse);
+            }
+            else {
+                this.canvas.removeEventListener('mousemove', handlerMouse);
+                this.lines[0].setPointB(offsetX, offsetY);
+                this.isFirstClick = true;
+                this.collapseBtn.disabled = false;
+                this.render();
+            }
+            ;
+        });
+    }
+    ;
+    handlerMouseMove(ev) {
+        this.lines[0].setPointB(ev.offsetX, ev.offsetY);
+        this.searchPoints();
+        this.render();
+    }
+    ;
+    searchPoints() {
+        this.points = this.lines.reduce((acc1, line1, idx1) => {
+            const deepPoints = this.lines.reduce((acc2, line2, idx2) => {
+                const coordL1 = line1.getCoordinates();
+                const coordL2 = line2.getCoordinates();
+                if (idx1 > idx2) {
+                    const c2x = coordL2.a.x - coordL2.b.x;
+                    const c3x = coordL1.a.x - coordL1.b.x;
+                    const c2y = coordL2.a.y - coordL2.b.y;
+                    const c3y = coordL1.a.y - coordL1.b.y;
+                    const d = c3x * c2y - c3y * c2x;
+                    if (d === 0) {
+                        return acc2;
+                    }
+                    ;
+                    const u1 = coordL1.a.x * coordL1.b.y - coordL1.a.y * coordL1.b.x;
+                    const u4 = coordL2.a.x * coordL2.b.y - coordL2.a.y * coordL2.b.x;
+                    const px = Math.round((u1 * c2x - c3x * u4) / d);
+                    const py = Math.round((u1 * c2y - c3y * u4) / d);
+                    if (!(((Math.min(coordL1.a.x, coordL1.b.x) <= px && px <= Math.max(coordL1.a.x, coordL1.b.x)) &&
+                        (Math.min(coordL2.a.x, coordL2.b.x) <= px && px <= Math.max(coordL2.a.x, coordL2.b.x))) &&
+                        ((Math.min(coordL1.a.y, coordL1.b.y) <= py && py <= Math.max(coordL1.a.y, coordL1.b.y)) &&
+                            (Math.min(coordL2.a.y, coordL2.b.y) <= py && py <= Math.max(coordL2.a.y, coordL2.b.y))))) {
+                        return acc2;
+                    }
+                    ;
+                    return [...acc2, new Point(px, py)];
+                }
+                ;
+                return acc2;
+            }, []);
+            if (deepPoints) {
+                return [...acc1, ...deepPoints];
+            }
+            ;
+            return acc1;
+        }, []);
+    }
+    ;
+    render() {
+        this.ctx.clearRect(0, 0, 600, 400);
+        this.lines.forEach((line) => {
+            const coordL = line.getCoordinates();
+            this.ctx.beginPath();
+            this.ctx.moveTo(coordL.a.x, coordL.a.y);
+            this.ctx.lineTo(coordL.b.x, coordL.b.y);
+            this.ctx.stroke();
+        });
+        this.points.forEach((point) => {
+            const coordP = point.getPoint();
+            this.ctx.beginPath();
+            this.ctx.arc(coordP.x, coordP.y, 4, 0, Math.PI * 2, true);
+            this.ctx.fillStyle = "red";
+            this.ctx.fill();
+            this.ctx.stroke();
+        });
+    }
+    ;
+    collapseLines() {
+        this.collapseBtn.disabled = true;
+        const cutStep = 25;
+        const numberOfCuts = (this.COLLAPSE_DELAY / cutStep);
+        const slices = [];
+        let counter = 0;
+        const cut = setInterval(() => {
+            counter += cutStep;
+            this.lines.forEach((line, idx) => {
+                const coordL = line.getCoordinates();
+                if (counter === cutStep) {
+                    const lineLength = +(Math.sqrt((coordL.b.x - coordL.a.x) ** 2 + (coordL.b.y - coordL.a.y) ** 2)).toFixed(2);
+                    slices[idx] = +(lineLength / numberOfCuts / 2).toFixed(2);
+                }
+                ;
+                const oldLength = +(Math.sqrt((coordL.b.x - coordL.a.x) ** 2 + (coordL.b.y - coordL.a.y) ** 2)).toFixed(2);
+                const newLength = +(oldLength - slices[idx]).toFixed(2);
+                const x = Math.max(coordL.a.x, coordL.b.x) - Math.min(coordL.a.x, coordL.b.x);
+                const y = Math.max(coordL.a.y, coordL.b.y) - Math.min(coordL.a.y, coordL.b.y);
+                const tx = (x * newLength) / oldLength;
+                const ty = (y * newLength) / oldLength;
+                let newX1;
+                coordL.b.x > coordL.a.x ? newX1 = coordL.a.x + (x - tx) : newX1 = coordL.a.x - (x - tx);
+                let newY1;
+                coordL.b.y > coordL.a.y ? newY1 = coordL.a.y + (y - ty) : newY1 = coordL.a.y - (y - ty);
+                let newX2;
+                coordL.b.x > coordL.a.x ? newX2 = coordL.b.x - (x - tx) : newX2 = coordL.b.x + (x - tx);
+                let newY2;
+                coordL.b.y > coordL.a.y ? newY2 = coordL.b.y - (y - ty) : newY2 = coordL.b.y + (y - ty);
+                this.lines[idx].setPointA(newX1, newY1);
+                this.lines[idx].setPointB(newX2, newY2);
+                this.searchPoints();
+                this.render();
+            });
+            if (counter >= this.COLLAPSE_DELAY) {
+                clearInterval(cut);
+                this.lines.length = 0;
+                this.ctx.clearRect(0, 0, 600, 400);
+            }
+            ;
+        }, cutStep);
+    }
+    ;
+}
+;
+const engine = new graphicEngine;
+engine.start();
