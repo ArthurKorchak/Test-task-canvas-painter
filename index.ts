@@ -54,12 +54,12 @@ class graphicEngine {
     this.collapseBtn.addEventListener('click', collapse);
     this.canvas.addEventListener('click', ({ offsetX, offsetY }) => {
       if (this.isFirstClick) {
-        this.lines.unshift(new Line(offsetX, offsetY));
+        this.lines.unshift(new Line(+offsetX.toFixed(2), +offsetY.toFixed(2)));
         this.isFirstClick = false;
         this.canvas.addEventListener('mousemove', handlerMouse);
       } else {
         this.canvas.removeEventListener('mousemove', handlerMouse);
-        this.lines[0].setPointB(offsetX, offsetY);
+        this.lines[0].setPointB(+offsetX.toFixed(2), +offsetY.toFixed(2));
         this.isFirstClick = true;
         this.collapseBtn.disabled = false;
         this.render();
@@ -89,8 +89,8 @@ class graphicEngine {
           };
           const u1 = coordL1.a.x * coordL1.b.y - coordL1.a.y * coordL1.b.x;
           const u4 = coordL2.a.x * coordL2.b.y - coordL2.a.y * coordL2.b.x; 
-          const px = Math.round((u1 * c2x - c3x * u4) / d);
-          const py = Math.round((u1 * c2y - c3y * u4) / d);
+          const px = +((u1 * c2x - c3x * u4) / d).toFixed(2);
+          const py = +((u1 * c2y - c3y * u4) / d).toFixed(2);
           if (!(((Math.min(coordL1.a.x, coordL1.b.x) <= px && px <= Math.max(coordL1.a.x, coordL1.b.x)) &&
             (Math.min(coordL2.a.x, coordL2.b.x) <= px && px <= Math.max(coordL2.a.x, coordL2.b.x))) &&
             ((Math.min(coordL1.a.y, coordL1.b.y) <= py && py <= Math.max(coordL1.a.y, coordL1.b.y)) &&
